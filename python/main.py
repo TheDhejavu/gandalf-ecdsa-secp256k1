@@ -6,14 +6,19 @@ from ecdsa import SigningKey, VerifyingKey, SECP256k1, BadSignatureError
 from graphqlclient import GraphQLClient
 
 
-def sign_message_as_base64(private_key_hex, message):
+# Step 1: Prepare the signature
+def prepare_signature(private_key_hex, message):
     sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
     message_hash = hashlib.sha256(message).digest()
     signature_der = sk.sign_digest(message_hash, sigencode=ecdsa.util.sigencode_der)
 
     # Encode the signature in base64
-    signature_base64 = base64.b64encode(signature_der).decode()
+    signature_base64 = encode_signature(signature_der)
     return signature_base64
+
+# Step 2: Encode the signature
+def encode_signature(signature):
+    return base64.b64encode(signature).decode('utf-8')
 
 def verify_signature(public_key_hex, message, signature_base64):
     vk = VerifyingKey.from_string(bytes.fromhex(public_key_hex), curve=SECP256k1)
@@ -26,35 +31,18 @@ def verify_signature(public_key_hex, message, signature_base64):
         return False
 
 def main():
-    private_key_hex = "366a5ae7c7575f8cb0e3832ad53e668061e0ad800b94ffb75fd5b6d241a83e56"
-    
+    private_key_hex = "GANDALF_PRIVATE_KEY"
     query = """
-    query getActivity($dataKey: String!, $source: Source!, $limit: Int64!, $page: Int64!) {
+    query getActivity($dataKey: String!, $source: Source!, $limit: Int, $page: Int) {
         getActivity(dataKey: $dataKey, source: $source, limit: $limit, page: $page) {
-            data {
-                id
-                metadata {
-                    ...NetflixActivityMetadata
-                }
-            }
-            limit
-            page
-            total
+            # ... specify the fields you want to get back
         }
-    }
-    fragment NetflixActivityMetadata on NetflixActivityMetadata {
-        title
-        subject {
-            value
-            identifierType
-        }
-        date
     }
     """
 
     variables = {
-        "dataKey": "BG7u85FMLGnYnUv2ZsFTAXrGT2Xw3TikrBHm2kYz31qq",
-        "source": "NETFLIX",
+        "dataKey": "YOUR_DATA_KEY",
+        "source": "YOUR_SOURCE",
         "limit": 10,
         "page": 1
     }
@@ -64,11 +52,10 @@ def main():
         'variables': variables
     }
 
-    signature_b64 = sign_message_as_base64(private_key_hex, json.dumps(request_body).encode('utf-8'))
-    print("Request Body:", request_body)
-    print("X-Gandalf-Signature:", signature_b64)
-   
-    client = GraphQLClient("http://localhost:1000/public/gql")
+    signature_b64 = prepare_signature(private_key_hex, json.dumps(request_body).encode('utf-8'))
+    client = GraphQLClient("https://sauron.gandalf.network/public/gql")
+
+    # Step 3: Add signature header
     client.inject_token(signature_b64,'X-Gandalf-Signature')
 
     result = client.execute(query, variables)
