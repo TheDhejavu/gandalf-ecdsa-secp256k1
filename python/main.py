@@ -5,7 +5,7 @@ import ecdsa
 from ecdsa import SigningKey, VerifyingKey, SECP256k1, BadSignatureError
 from graphqlclient import GraphQLClient
 
-# Rest of your code remains unchanged
+
 def sign_message_as_base64(private_key_hex, message):
     sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
     message_hash = hashlib.sha256(message).digest()
@@ -24,9 +24,6 @@ def verify_signature(public_key_hex, message, signature_base64):
         return True
     except BadSignatureError:
         return False
-  
-def serialize_for_signature(data):
-    return json.dumps(data, separators=(',', ':'), sort_keys=True)
 
 def main():
     private_key_hex = "366a5ae7c7575f8cb0e3832ad53e668061e0ad800b94ffb75fd5b6d241a83e56"
@@ -75,6 +72,7 @@ def main():
     client.inject_token(signature_b64,'X-Gandalf-Signature')
 
     result = client.execute(query, variables)
+    print(result)
 
 if __name__ == "__main__":
   main()
